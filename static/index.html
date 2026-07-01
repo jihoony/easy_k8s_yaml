@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Easy K8s YAML Generator</title>
+  <meta name="description" content="Secret, ConfigMap, Service, Deployment Kubernetes YAML을 웹에서 손쉽게 생성하는 도구">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ==================== Header ==================== -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">
+        <span class="logo-icon" aria-hidden="true">⎈</span>
+        <span class="logo-text">Easy <span class="highlight">K8s</span> YAML</span>
+      </div>
+      <div class="header-divider"></div>
+      <p class="header-subtitle">kubectl 컨테이너 기반 Kubernetes YAML 생성기</p>
+    </div>
+  </header>
+
+  <!-- ==================== Main ==================== -->
+  <main class="main">
+    <div class="workspace">
+
+      <!-- ========== Left: Form Panel (scrollable) ========== -->
+      <div class="form-panel">
+
+        <!-- Shared App Name -->
+        <div class="app-name-card">
+          <label class="form-label" for="app-name">
+            <span class="app-name-icon" aria-hidden="true">🏷️</span>
+            앱 이름 <span class="required">*</span>
+            <span class="app-name-hint">Secret · ConfigMap · Service · Deployment 공통 적용</span>
+          </label>
+          <input type="text" id="app-name" class="form-input app-name-input"
+                 placeholder="my-app" autocomplete="off">
+        </div>
+
+        <!-- ===== Section 1: Secret ===== -->
+        <section class="k8s-section" id="section-secret">
+          <div class="k8s-section-header">
+            <div class="section-num" style="background: linear-gradient(135deg, var(--danger), var(--secondary));">1</div>
+            <div class="section-title-group">
+              <h2>Secret</h2>
+              <p>비밀번호, 토큰 등 민감 정보를 포함한 Secret을 생성합니다</p>
+            </div>
+            <span class="section-done" id="done-secret">✓ 생성됨</span>
+          </div>
+
+          <div class="k8s-section-body">
+            <!-- Secret Data (Key-Value) -->
+            <div class="form-section">
+              <div class="form-section-header">
+                <h3>Secret 데이터</h3>
+                <button class="btn-add" onclick="addSecretVar()" aria-label="Secret 데이터 추가">
+                  <span aria-hidden="true">+</span> 데이터 추가
+                </button>
+              </div>
+              <div id="secret-vars-container" class="env-vars-container" aria-live="polite"></div>
+              <p id="secret-vars-empty" class="empty-hint">비밀 키-값을 추가하려면 "데이터 추가" 버튼을 클릭하세요</p>
+            </div>
+
+            <!-- Secret File Upload -->
+            <div class="form-section">
+              <div class="form-section-header">
+                <h3>Secret 파일 업로드</h3>
+              </div>
+              <div class="file-upload-area" id="secret-upload-area"
+                   onclick="document.getElementById('secret-file-input').click()"
+                   ondrop="handleSecretDrop(event)"
+                   ondragover="handleSecretDragOver(event)"
+                   ondragleave="handleSecretDragLeave(event)"
+                   role="button" tabindex="0" aria-label="Secret 파일 업로드 영역">
+                <input type="file" id="secret-file-input" multiple class="file-input-hidden"
+                       onchange="handleSecretFileSelect(event)" aria-hidden="true">
+                <div class="upload-icon" aria-hidden="true">🔑</div>
+                <p class="upload-text">파일을 드래그하거나 클릭하여 업로드</p>
+                <p class="upload-hint">인증서, key 파일 등 보안이 필요한 파일 업로드</p>
+              </div>
+              <div id="secret-file-list" class="file-list" aria-live="polite"></div>
+            </div>
+
+            <button class="btn-generate" style="background: linear-gradient(135deg, var(--danger), var(--secondary)); box-shadow: 0 4px 16px rgba(252,92,101,0.28);" onclick="generateSecret()">
+              <span class="btn-icon" aria-hidden="true">⚡</span>
+              Secret YAML 생성
+            </button>
+          </div>
+        </section>
+
+        <!-- ===== Section 2: ConfigMap ===== -->
+        <section class="k8s-section" id="section-configmap">
+          <div class="k8s-section-header">
+            <div class="section-num">2</div>
+            <div class="section-title-group">
+              <h2>ConfigMap</h2>
+              <p>환경 변수와 일반 파일을 포함한 ConfigMap을 생성합니다</p>
+            </div>
+            <span class="section-done" id="done-configmap">✓ 생성됨</span>
+          </div>
+
+          <div class="k8s-section-body">
+
+            <!-- Env Vars -->
+            <div class="form-section">
+              <div class="form-section-header">
+                <h3>환경 변수</h3>
+                <button class="btn-add" onclick="addEnvVar()" aria-label="환경 변수 추가">
+                  <span aria-hidden="true">+</span> 변수 추가
+                </button>
+              </div>
+              <div id="env-vars-container" class="env-vars-container" aria-live="polite"></div>
+              <p id="env-vars-empty" class="empty-hint">환경 변수를 추가하려면 "변수 추가" 버튼을 클릭하세요</p>
+            </div>
+
+            <!-- File Upload -->
+            <div class="form-section">
+              <div class="form-section-header">
+                <h3>파일 업로드</h3>
+              </div>
+              <div class="file-upload-area" id="file-upload-area"
+                   onclick="document.getElementById('file-input').click()"
+                   ondrop="handleDrop(event)"
+                   ondragover="handleDragOver(event)"
+                   ondragleave="handleDragLeave(event)"
+                   role="button" tabindex="0" aria-label="파일 업로드 영역">
+                <input type="file" id="file-input" multiple class="file-input-hidden"
+                       onchange="handleFileSelect(event)" aria-hidden="true">
+                <div class="upload-icon" aria-hidden="true">📁</div>
+                <p class="upload-text">파일을 드래그하거나 클릭하여 업로드</p>
+                <p class="upload-hint">application.yml, .env 등 여러 파일 동시 업로드 가능</p>
+              </div>
+              <div id="file-list" class="file-list" aria-live="polite"></div>
+            </div>
+
+            <button class="btn-generate" onclick="generateConfigMap()">
+              <span class="btn-icon" aria-hidden="true">⚡</span>
+              ConfigMap YAML 생성
+            </button>
+          </div>
+        </section>
+
+        <!-- ===== Section 3: Service ===== -->
+        <section class="k8s-section" id="section-service">
+          <div class="k8s-section-header">
+            <div class="section-num">3</div>
+            <div class="section-title-group">
+              <h2>Service</h2>
+              <p>Kubernetes Service 리소스를 구성합니다</p>
+            </div>
+            <span class="section-done" id="done-service">✓ 생성됨</span>
+          </div>
+
+          <div class="k8s-section-body">
+
+            <div class="form-group">
+              <label class="form-label">서비스 타입</label>
+              <div class="type-selector" role="radiogroup" aria-label="서비스 타입 선택">
+                <div class="type-option active" id="type-clusterip" onclick="selectServiceType('clusterip')"
+                     role="radio" aria-checked="true" tabindex="0">
+                  <div class="type-icon" aria-hidden="true">🔒</div>
+                  <div class="type-name">ClusterIP</div>
+                  <div class="type-desc">클러스터 내부 통신</div>
+                </div>
+                <div class="type-option" id="type-nodeport" onclick="selectServiceType('nodeport')"
+                     role="radio" aria-checked="false" tabindex="0">
+                  <div class="type-icon" aria-hidden="true">🌐</div>
+                  <div class="type-name">NodePort</div>
+                  <div class="type-desc">노드 포트로 외부 노출</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="svc-port-name">포트 이름</label>
+                <input type="text" id="svc-port-name" class="form-input" placeholder="http" autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="svc-service-port">Service Port <span class="required">*</span></label>
+                <input type="number" id="svc-service-port" class="form-input" placeholder="80" value="80" min="1" max="65535">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="svc-target-port">Target Port <span class="required">*</span></label>
+                <input type="number" id="svc-target-port" class="form-input" placeholder="8080" value="8080" min="1" max="65535">
+              </div>
+              <div class="form-group" id="nodeport-group" style="display:none;">
+                <label class="form-label" for="svc-node-port">Node Port</label>
+                <input type="number" id="svc-node-port" class="form-input" placeholder="30080" min="30000" max="32767">
+              </div>
+            </div>
+
+            <button class="btn-generate" onclick="generateService()">
+              <span class="btn-icon" aria-hidden="true">⚡</span>
+              Service YAML 생성
+            </button>
+          </div>
+        </section>
+
+        <!-- ===== Section 4: Deployment ===== -->
+        <section class="k8s-section" id="section-deployment">
+          <div class="k8s-section-header">
+            <div class="section-num">4</div>
+            <div class="section-title-group">
+              <h2>Deployment</h2>
+              <p>Secret 및 ConfigMap이 연동된 Deployment를 생성합니다</p>
+            </div>
+            <span class="section-done" id="done-deployment">✓ 생성됨</span>
+          </div>
+
+          <div class="k8s-section-body">
+
+            <div class="form-group">
+              <label class="form-label" for="dep-image">컨테이너 이미지 <span class="required">*</span></label>
+              <input type="text" id="dep-image" class="form-input" placeholder="nginx:1.25" autocomplete="off">
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="dep-replicas">Replicas</label>
+                <input type="number" id="dep-replicas" class="form-input" placeholder="1" value="1" min="1">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="dep-port">컨테이너 포트</label>
+                <input type="number" id="dep-port" class="form-input" placeholder="8080" value="8080" min="1" max="65535">
+              </div>
+            </div>
+
+            <!-- Env Vars from Secret, ConfigMap & Custom -->
+            <div class="form-section env-inject-section">
+              <div class="form-section-header">
+                <h3>환경 변수 주입</h3>
+                <span class="badge badge-envvar">Secret · ConfigMap · 직접 추가</span>
+              </div>
+              
+              <!-- Secret Linked Env Vars -->
+              <div class="mount-items-wrapper" style="margin-bottom: 0.75rem;">
+                <div class="mount-items-toolbar">
+                  <span class="mount-items-label">Secret 연동 환경 변수</span>
+                  <div class="mount-select-btns">
+                    <button class="btn-select-all" onclick="selectAllSecretEnvKeys(true)">전체 선택</button>
+                    <button class="btn-select-all" onclick="selectAllSecretEnvKeys(false)">전체 해제</button>
+                  </div>
+                </div>
+                <div id="secret-env-inject-container" class="mount-items-container">
+                  <p class="empty-hint" style="padding:0.75rem">Section 1에서 Secret 데이터를 추가하면 여기에 표시됩니다</p>
+                </div>
+              </div>
+
+              <!-- ConfigMap Linked Env Vars -->
+              <div class="mount-items-wrapper">
+                <div class="mount-items-toolbar">
+                  <span class="mount-items-label">ConfigMap 연동 환경 변수</span>
+                  <div class="mount-select-btns">
+                    <button class="btn-select-all" onclick="selectAllEnvKeys(true)">전체 선택</button>
+                    <button class="btn-select-all" onclick="selectAllEnvKeys(false)">전체 해제</button>
+                  </div>
+                </div>
+                <div id="env-inject-container" class="mount-items-container">
+                  <p class="empty-hint" style="padding:0.75rem">Section 2에서 환경 변수를 추가하면 여기에 표시됩니다</p>
+                </div>
+              </div>
+
+              <!-- Custom Direct Env Vars -->
+              <div class="form-section" style="background: rgba(0,0,0,0.15); border: 1px dashed rgba(255,255,255,0.05); margin-top: 0.75rem; padding: 0.75rem;">
+                <div class="form-section-header">
+                  <h4 style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;">직접 추가 환경 변수</h4>
+                  <button class="btn-add" onclick="addDepCustomEnvVar()" aria-label="직접 추가 환경 변수 추가">
+                    <span aria-hidden="true">+</span> 변수 추가
+                  </button>
+                </div>
+                <div id="dep-custom-env-container" class="env-vars-container" style="margin-top: 0.5rem;" aria-live="polite"></div>
+                <p id="dep-custom-env-empty" class="empty-hint" style="padding: 0.25rem;">직접 주입할 환경 변수가 있다면 추가하세요</p>
+              </div>
+            </div>
+
+            <!-- Secret Volume Mount (files) -->
+            <div class="form-section mount-section" style="border-color: rgba(252,92,101,0.2); background: rgba(252,92,101,0.02); margin-bottom: 0.75rem;">
+              <div class="form-section-header">
+                <h3>Secret 볼륨 마운트</h3>
+                <span class="badge" style="background: rgba(252,92,101,0.15); color: var(--danger); border-color: rgba(252,92,101,0.25);">Section 1 연동</span>
+              </div>
+              <div class="mount-items-wrapper">
+                <div class="mount-items-toolbar">
+                  <span class="mount-items-label">마운트할 Secret 파일
+                    <span class="mount-items-sub">(파일마다 마운트 경로 입력)</span>
+                  </span>
+                  <div class="mount-select-btns">
+                    <button class="btn-select-all" onclick="selectAllSecretMountItems(true)">전체 선택</button>
+                    <button class="btn-select-all" onclick="selectAllSecretMountItems(false)">전체 해제</button>
+                  </div>
+                </div>
+                <div id="secret-mount-items-container" class="mount-items-container">
+                  <p class="empty-hint" style="padding:0.75rem">Secret 파일을 업로드하면 여기에 표시됩니다</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- ConfigMap Volume Mount (files) -->
+            <div class="form-section mount-section">
+              <div class="form-section-header">
+                <h3>ConfigMap 볼륨 마운트</h3>
+                <span class="badge">Section 2 연동</span>
+              </div>
+              <div class="mount-items-wrapper">
+                <div class="mount-items-toolbar">
+                  <span class="mount-items-label">마운트할 ConfigMap 파일
+                    <span class="mount-items-sub">(파일마다 마운트 경로 입력)</span>
+                  </span>
+                  <div class="mount-select-btns">
+                    <button class="btn-select-all" onclick="selectAllMountItems(true)">전체 선택</button>
+                    <button class="btn-select-all" onclick="selectAllMountItems(false)">전체 해제</button>
+                  </div>
+                </div>
+                <div id="mount-items-container" class="mount-items-container">
+                  <p class="empty-hint" style="padding:0.75rem">ConfigMap 파일을 업로드하면 여기에 표시됩니다</p>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-generate" onclick="generateDeployment()">
+              <span class="btn-icon" aria-hidden="true">⚡</span>
+              Deployment YAML 생성
+            </button>
+          </div>
+        </section>
+
+      </div><!-- /form-panel -->
+
+      <!-- ========== Right: Output Panel (scrollable) ========== -->
+      <div class="output-panel">
+
+        <div class="output-header">
+          <h2>Generated YAML</h2>
+          <div class="output-actions">
+            <button class="btn-action" id="btn-copy-all" onclick="copyAll()" disabled aria-label="전체 YAML 복사">
+              <span aria-hidden="true">📋</span> 전체 복사
+            </button>
+            <button class="btn-action btn-download" id="btn-download-all" onclick="downloadAll()" disabled aria-label="전체 YAML 다운로드">
+              <span aria-hidden="true">⬇️</span> 다운로드
+            </button>
+          </div>
+        </div>
+
+        <div class="yaml-outputs" id="yaml-outputs">
+
+          <!-- Empty state -->
+          <div class="output-empty" id="output-empty">
+            <div class="empty-icon" aria-hidden="true">⎈</div>
+            <p>왼쪽 폼을 작성하고<br>YAML 생성 버튼을 클릭하세요</p>
+          </div>
+
+          <!-- Secret YAML -->
+          <div class="yaml-card" id="yaml-card-secret" style="display:none;">
+            <div class="yaml-card-header">
+              <span class="yaml-badge yaml-badge-secret" style="background: rgba(252,92,101,0.2); color: var(--danger); border: 1px solid rgba(252,92,101,0.25);">Secret</span>
+              <button class="btn-copy-single" onclick="copySingle('secret')">복사</button>
+            </div>
+            <pre><code class="language-yaml" id="yaml-output-secret"></code></pre>
+          </div>
+
+          <!-- ConfigMap YAML -->
+          <div class="yaml-card" id="yaml-card-configmap" style="display:none;">
+            <div class="yaml-card-header">
+              <span class="yaml-badge yaml-badge-configmap">ConfigMap</span>
+              <button class="btn-copy-single" onclick="copySingle('configmap')">복사</button>
+            </div>
+            <pre><code class="language-yaml" id="yaml-output-configmap"></code></pre>
+          </div>
+
+          <!-- Service YAML -->
+          <div class="yaml-card" id="yaml-card-service" style="display:none;">
+            <div class="yaml-card-header">
+              <span class="yaml-badge yaml-badge-service">Service</span>
+              <button class="btn-copy-single" onclick="copySingle('service')">복사</button>
+            </div>
+            <pre><code class="language-yaml" id="yaml-output-service"></code></pre>
+          </div>
+
+          <!-- Deployment YAML -->
+          <div class="yaml-card" id="yaml-card-deployment" style="display:none;">
+            <div class="yaml-card-header">
+              <span class="yaml-badge yaml-badge-deployment">Deployment</span>
+              <button class="btn-copy-single" onclick="copySingle('deployment')">복사</button>
+            </div>
+            <pre><code class="language-yaml" id="yaml-output-deployment"></code></pre>
+          </div>
+
+        </div>
+      </div><!-- /output-panel -->
+
+    </div><!-- /workspace -->
+  </main>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay" role="status" aria-live="assertive">
+    <div class="loading-spinner"></div>
+    <p>kubectl 명령 실행 중...</p>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
