@@ -831,6 +831,8 @@ function displayYaml(type, yamlText) {
   if (prevErr) prevErr.remove();
   card.querySelector('pre').style.display = '';
 
+  // Reset className to ensure highlight.js re-highlights the content correctly
+  codeEl.className = 'language-yaml';
   codeEl.textContent = yamlText;
   hljs.highlightElement(codeEl);
   card.style.display = '';

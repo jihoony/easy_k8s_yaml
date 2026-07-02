@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -113,9 +114,11 @@ func postProcessService(yamlStr, portName, nodePort string) (string, error) {
 		}
 	}
 
-	out, err := yaml.Marshal(obj)
-	if err != nil {
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(obj); err != nil {
 		return yamlStr, err
 	}
-	return string(out), nil
+	return buf.String(), nil
 }

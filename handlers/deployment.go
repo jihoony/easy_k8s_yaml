@@ -1,8 +1,8 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"easy-k8s-yaml/kubectl"
@@ -72,6 +72,7 @@ func HandleDeployment(w http.ResponseWriter, r *http.Request) {
 		req.Port = "8080"
 	}
 
+	// Build CLI arguments for kubectl create deployment
 	args := []string{
 		"create", "deployment", req.Name,
 		"--image=" + req.Image,
@@ -89,76 +90,69 @@ func HandleDeployment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse YAML once into object map
+	var obj map[string]interface{}
+	if err := yaml.Unmarshal([]byte(yamlOutput), &obj); err != nil {
+		writeError(w, "YAML 파싱 실패: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	// Post-process 1: inject env vars from ConfigMap (valueFrom.configMapKeyRef)
 	if req.ConfigMapName != "" && len(req.EnvKeys) > 0 {
-		processed, err := addEnvFromConfigMap(yamlOutput, req.ConfigMapName, req.EnvKeys)
-		if err == nil {
-			yamlOutput = processed
-		}
+		addEnvFromConfigMap(obj, req.ConfigMapName, req.EnvKeys)
 	}
 
 	// Post-process 1.2: inject env vars from Secret (valueFrom.secretKeyRef)
 	if req.SecretName != "" && len(req.SecretEnvKeys) > 0 {
-		processed, err := addEnvFromSecret(yamlOutput, req.SecretName, req.SecretEnvKeys)
-		if err == nil {
-			yamlOutput = processed
-		}
+		addEnvFromSecret(obj, req.SecretName, req.SecretEnvKeys)
 	}
 
 	// Post-process 1.5: inject arbitrary custom environment variables (value)
 	if len(req.CustomEnvVars) > 0 {
-		processed, err := addCustomEnvVars(yamlOutput, req.CustomEnvVars)
-		if err == nil {
-			yamlOutput = processed
-		}
+		addCustomEnvVars(obj, req.CustomEnvVars)
 	}
 
 	// Post-process 2: add per-file ConfigMap volume mounts (subPath)
 	if req.ConfigMapName != "" && len(req.MountItems) > 0 {
-		processed, err := addConfigMapMount(yamlOutput, req.ConfigMapName, req.MountItems)
-		if err == nil {
-			yamlOutput = processed
-		}
+		addConfigMapMount(obj, req.ConfigMapName, req.MountItems)
 	}
 
 	// Post-process 2.2: add per-file Secret volume mounts (subPath)
 	if req.SecretName != "" && len(req.SecretMountItems) > 0 {
-		processed, err := addSecretMount(yamlOutput, req.SecretName, req.SecretMountItems)
-		if err == nil {
-			yamlOutput = processed
-		}
+		addSecretMount(obj, req.SecretName, req.SecretMountItems)
 	}
 
 	// Post-process 3: inject manual volume mounts (hostPath, emptyDir, PVC)
 	if len(req.ManualMounts) > 0 {
-		processed, err := addManualVolumeMounts(yamlOutput, req.ManualMounts)
-		if err == nil {
-			yamlOutput = processed
-		}
+		addManualVolumeMounts(obj, req.ManualMounts)
 	}
 
-	writeJSON(w, map[string]string{"yaml": yamlOutput})
+	// Serialize with explicit 2-spaces indentation to fix formatting issue
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(obj); err != nil {
+		writeError(w, "YAML 직렬화 실패: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, map[string]string{"yaml": buf.String()})
 }
 
 // addConfigMapMount injects ConfigMap volume + per-file volumeMounts (with subPath)
 // into the first container of the Deployment's pod spec.
-func addConfigMapMount(yamlStr, configMapName string, mountItems []MountItem) (string, error) {
-	var obj map[string]interface{}
-	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
-		return yamlStr, err
-	}
-
+func addConfigMapMount(obj map[string]interface{}, configMapName string, mountItems []MountItem) {
 	spec, ok := obj["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("spec not found")
+		return
 	}
 	template, ok := spec["template"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("template not found")
+		return
 	}
 	podSpec, ok := template["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("pod spec not found")
+		return
 	}
 
 	volumeName := configMapName + "-vol"
@@ -202,40 +196,29 @@ func addConfigMapMount(yamlStr, configMapName string, mountItems []MountItem) (s
 			container["volumeMounts"] = mountsList
 		}
 	}
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return yamlStr, err
-	}
-	return string(out), nil
 }
 
 // addSecretMount injects Secret volume + per-file volumeMounts (with subPath)
 // into the first container of the Deployment's pod spec.
-func addSecretMount(yamlStr, secretName string, mountItems []MountItem) (string, error) {
-	var obj map[string]interface{}
-	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
-		return yamlStr, err
-	}
-
+func addSecretMount(obj map[string]interface{}, secretName string, mountItems []MountItem) {
 	spec, ok := obj["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("spec not found")
+		return
 	}
 	template, ok := spec["template"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("template not found")
+		return
 	}
 	podSpec, ok := template["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("pod spec not found")
+		return
 	}
 
 	volumeName := secretName + "-sec-vol"
 
-	secItems := make([]interface{}, 0, len(mountItems))
+	secretItems := make([]interface{}, 0, len(mountItems))
 	for _, item := range mountItems {
-		secItems = append(secItems, map[string]interface{}{
+		secretItems = append(secretItems, map[string]interface{}{
 			"key":  item.Key,
 			"path": item.Key,
 		})
@@ -249,7 +232,7 @@ func addSecretMount(yamlStr, secretName string, mountItems []MountItem) (string,
 		"name": volumeName,
 		"secret": map[string]interface{}{
 			"secretName": secretName,
-			"items":      secItems,
+			"items":      secretItems,
 		},
 	})
 	podSpec["volumes"] = volumesList
@@ -272,44 +255,30 @@ func addSecretMount(yamlStr, secretName string, mountItems []MountItem) (string,
 			container["volumeMounts"] = mountsList
 		}
 	}
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return yamlStr, err
-	}
-	return string(out), nil
 }
 
-// addEnvFromConfigMap injects env vars into the first container using valueFrom.configMapKeyRef.
-func addEnvFromConfigMap(yamlStr, configMapName string, envKeys []string) (string, error) {
-	if len(envKeys) == 0 {
-		return yamlStr, nil
-	}
-
-	var obj map[string]interface{}
-	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
-		return yamlStr, err
-	}
-
+// addEnvFromConfigMap injects ConfigMap key references as individual environment variables
+// inside the first container's 'env' list.
+func addEnvFromConfigMap(obj map[string]interface{}, configMapName string, envKeys []string) {
 	spec, ok := obj["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("spec not found")
+		return
 	}
 	template, ok := spec["template"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("template not found")
+		return
 	}
 	podSpec, ok := template["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("pod spec not found")
+		return
 	}
 	containers, ok := podSpec["containers"].([]interface{})
 	if !ok || len(containers) == 0 {
-		return yamlStr, nil
+		return
 	}
 	container, ok := containers[0].(map[string]interface{})
 	if !ok {
-		return yamlStr, nil
+		return
 	}
 
 	var envList []interface{}
@@ -329,44 +298,30 @@ func addEnvFromConfigMap(yamlStr, configMapName string, envKeys []string) (strin
 		})
 	}
 	container["env"] = envList
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return yamlStr, err
-	}
-	return string(out), nil
 }
 
-// addEnvFromSecret injects env vars into the first container using valueFrom.secretKeyRef.
-func addEnvFromSecret(yamlStr, secretName string, secretEnvKeys []string) (string, error) {
-	if len(secretEnvKeys) == 0 {
-		return yamlStr, nil
-	}
-
-	var obj map[string]interface{}
-	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
-		return yamlStr, err
-	}
-
+// addEnvFromSecret injects Secret key references as individual environment variables
+// inside the first container's 'env' list.
+func addEnvFromSecret(obj map[string]interface{}, secretName string, envKeys []string) {
 	spec, ok := obj["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("spec not found")
+		return
 	}
 	template, ok := spec["template"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("template not found")
+		return
 	}
 	podSpec, ok := template["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("pod spec not found")
+		return
 	}
 	containers, ok := podSpec["containers"].([]interface{})
 	if !ok || len(containers) == 0 {
-		return yamlStr, nil
+		return
 	}
 	container, ok := containers[0].(map[string]interface{})
 	if !ok {
-		return yamlStr, nil
+		return
 	}
 
 	var envList []interface{}
@@ -374,7 +329,7 @@ func addEnvFromSecret(yamlStr, secretName string, secretEnvKeys []string) (strin
 		envList = existing
 	}
 
-	for _, key := range secretEnvKeys {
+	for _, key := range envKeys {
 		envList = append(envList, map[string]interface{}{
 			"name": key,
 			"valueFrom": map[string]interface{}{
@@ -386,44 +341,29 @@ func addEnvFromSecret(yamlStr, secretName string, secretEnvKeys []string) (strin
 		})
 	}
 	container["env"] = envList
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return yamlStr, err
-	}
-	return string(out), nil
 }
 
-// addCustomEnvVars injects manual env vars (name and direct value) into the first container.
-func addCustomEnvVars(yamlStr string, customEnvVars []CustomEnvVar) (string, error) {
-	if len(customEnvVars) == 0 {
-		return yamlStr, nil
-	}
-
-	var obj map[string]interface{}
-	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
-		return yamlStr, err
-	}
-
+// addCustomEnvVars appends manually typed key-value pairs to the first container's env.
+func addCustomEnvVars(obj map[string]interface{}, customEnvVars []CustomEnvVar) {
 	spec, ok := obj["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("spec not found")
+		return
 	}
 	template, ok := spec["template"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("template not found")
+		return
 	}
 	podSpec, ok := template["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("pod spec not found")
+		return
 	}
 	containers, ok := podSpec["containers"].([]interface{})
 	if !ok || len(containers) == 0 {
-		return yamlStr, nil
+		return
 	}
 	container, ok := containers[0].(map[string]interface{})
 	if !ok {
-		return yamlStr, nil
+		return
 	}
 
 	var envList []interface{}
@@ -438,36 +378,21 @@ func addCustomEnvVars(yamlStr string, customEnvVars []CustomEnvVar) (string, err
 		})
 	}
 	container["env"] = envList
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return yamlStr, err
-	}
-	return string(out), nil
 }
 
 // addManualVolumeMounts injects user-defined volumes and volumeMounts into the first container.
-func addManualVolumeMounts(yamlStr string, manualMounts []ManualMount) (string, error) {
-	if len(manualMounts) == 0 {
-		return yamlStr, nil
-	}
-
-	var obj map[string]interface{}
-	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
-		return yamlStr, err
-	}
-
+func addManualVolumeMounts(obj map[string]interface{}, manualMounts []ManualMount) {
 	spec, ok := obj["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("spec not found")
+		return
 	}
 	template, ok := spec["template"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("template not found")
+		return
 	}
 	podSpec, ok := template["spec"].(map[string]interface{})
 	if !ok {
-		return yamlStr, fmt.Errorf("pod spec not found")
+		return
 	}
 
 	// --- Add manual volumes ---
@@ -514,10 +439,4 @@ func addManualVolumeMounts(yamlStr string, manualMounts []ManualMount) (string, 
 			container["volumeMounts"] = mountsList
 		}
 	}
-
-	out, err := yaml.Marshal(obj)
-	if err != nil {
-		return yamlStr, err
-	}
-	return string(out), nil
 }
