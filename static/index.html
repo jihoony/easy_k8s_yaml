@@ -68,6 +68,15 @@
           <button class="btn-generate" onclick="generateAll()" style="margin-top: 0.75rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); box-shadow: 0 4px 16px rgba(79,142,247,0.25);">
             ⚡ 일괄 YAML 생성
           </button>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+            <button class="btn-action" onclick="exportPreset()" style="flex: 1; padding: 0.45rem; font-size: 0.72rem; border-color: rgba(79,142,247,0.2);" aria-label="설정 내보내기">
+              📥 설정 내보내기
+            </button>
+            <button class="btn-action" onclick="document.getElementById('preset-file-input').click()" style="flex: 1; padding: 0.45rem; font-size: 0.72rem; border-color: rgba(139,108,247,0.2);" aria-label="설정 불러오기">
+              📤 설정 불러오기
+            </button>
+            <input type="file" id="preset-file-input" style="display: none;" onchange="importPreset(event)" accept=".json" aria-hidden="true">
+          </div>
         </div>
 
         <!-- ===== Section 1: Secret ===== -->
@@ -454,6 +463,6 @@
   <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script src="app.js?v=2.0"></script>
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>

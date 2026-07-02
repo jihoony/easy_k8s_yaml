@@ -44,7 +44,7 @@ function markSectionDone(type) {
 /* =====================================================
    Secret — Key-Value Data
    ===================================================== */
-function addSecretVar() {
+function addSecretVar(key = '', val = '') {
   state.secretVarCount++;
   const id = state.secretVarCount;
 
@@ -54,15 +54,19 @@ function addSecretVar() {
   row.innerHTML = `
     <input type="text" class="form-input" placeholder="KEY"
            id="secret-key-${id}" aria-label="Secret 데이터 키"
+           value="${escapeHtml(key)}"
            oninput="updateSecretEnvInjectUI()">
     <input type="text" class="form-input" placeholder="VALUE"
-           id="secret-val-${id}" aria-label="Secret 데이터 값">
+           id="secret-val-${id}" aria-label="Secret 데이터 값"
+           value="${escapeHtml(val)}">
     <button class="btn-remove" onclick="removeSecretVar(${id})" aria-label="Secret 데이터 삭제">✕</button>
   `;
 
   document.getElementById('secret-vars-container').appendChild(row);
   document.getElementById('secret-vars-empty').style.display = 'none';
-  document.getElementById(`secret-key-${id}`).focus();
+  if (!key) {
+    document.getElementById(`secret-key-${id}`).focus();
+  }
   updateSecretEnvInjectUI();
 }
 
@@ -145,7 +149,7 @@ function renderSecretFileList() {
 /* =====================================================
    ConfigMap — Env Vars
    ===================================================== */
-function addEnvVar() {
+function addEnvVar(key = '', val = '') {
   state.envVarCount++;
   const id = state.envVarCount;
 
@@ -155,15 +159,19 @@ function addEnvVar() {
   row.innerHTML = `
     <input type="text" class="form-input" placeholder="KEY"
            id="env-key-${id}" aria-label="환경 변수 키"
+           value="${escapeHtml(key)}"
            oninput="updateEnvInjectUI()">
     <input type="text" class="form-input" placeholder="VALUE"
-           id="env-val-${id}" aria-label="환경 변수 값">
+           id="env-val-${id}" aria-label="환경 변수 값"
+           value="${escapeHtml(val)}">
     <button class="btn-remove" onclick="removeEnvVar(${id})" aria-label="환경 변수 삭제">✕</button>
   `;
 
   document.getElementById('env-vars-container').appendChild(row);
   document.getElementById('env-vars-empty').style.display = 'none';
-  document.getElementById(`env-key-${id}`).focus();
+  if (!key) {
+    document.getElementById(`env-key-${id}`).focus();
+  }
   updateEnvInjectUI();
 }
 
@@ -471,7 +479,7 @@ function getSelectedEnvKeys() {
 /* =====================================================
    Deployment — Custom Env Vars
    ===================================================== */
-function addDepCustomEnvVar() {
+function addDepCustomEnvVar(key = '', val = '') {
   state.depCustomEnvCount++;
   const id = state.depCustomEnvCount;
 
@@ -480,15 +488,17 @@ function addDepCustomEnvVar() {
   row.id = `dep-custom-env-row-${id}`;
   row.innerHTML = `
     <input type="text" class="form-input" placeholder="KEY"
-           id="dep-custom-env-key-${id}" aria-label="직접 추가 환경 변수 키">
+           id="dep-custom-env-key-${id}" value="${escapeHtml(key)}" aria-label="직접 추가 환경 변수 키">
     <input type="text" class="form-input" placeholder="VALUE"
-           id="dep-custom-env-val-${id}" aria-label="직접 추가 환경 변수 값">
+           id="dep-custom-env-val-${id}" value="${escapeHtml(val)}" aria-label="직접 추가 환경 변수 값">
     <button class="btn-remove" onclick="removeDepCustomEnvVar(${id})" aria-label="직접 추가 환경 변수 삭제">✕</button>
   `;
 
   document.getElementById('dep-custom-env-container').appendChild(row);
   document.getElementById('dep-custom-env-empty').style.display = 'none';
-  document.getElementById(`dep-custom-env-key-${id}`).focus();
+  if (!key) {
+    document.getElementById(`dep-custom-env-key-${id}`).focus();
+  }
 }
 
 function removeDepCustomEnvVar(id) {
@@ -958,7 +968,7 @@ function restoreTheme() {
 /* =====================================================
    Deployment — Manual Volume Mounts
    ===================================================== */
-function addManualMount() {
+function addManualMount(name = '', type = 'hostPath', source = '', mountPath = '') {
   state.manualMountCount++;
   const id = state.manualMountCount;
 
@@ -968,23 +978,26 @@ function addManualMount() {
   row.style.marginTop = '0.5rem';
   row.innerHTML = `
     <input type="text" class="form-input" placeholder="볼륨명 (예: data-vol)"
-           id="manual-vol-name-${id}" aria-label="수동 볼륨 이름">
+           id="manual-vol-name-${id}" value="${escapeHtml(name)}" aria-label="수동 볼륨 이름">
     <select class="form-input" id="manual-vol-type-${id}"
             onchange="toggleManualVolSource(${id})" aria-label="수동 볼륨 타입">
-      <option value="hostPath">hostPath</option>
-      <option value="emptyDir">emptyDir</option>
-      <option value="pvc">PVC</option>
+      <option value="hostPath" ${type === 'hostPath' ? 'selected' : ''}>hostPath</option>
+      <option value="emptyDir" ${type === 'emptyDir' ? 'selected' : ''}>emptyDir</option>
+      <option value="pvc" ${type === 'pvc' ? 'selected' : ''}>PVC</option>
     </select>
     <input type="text" class="form-input" placeholder="호스트 경로 (예: /var/data)"
-           id="manual-vol-source-${id}" aria-label="수동 볼륨 소스">
+           id="manual-vol-source-${id}" value="${escapeHtml(source)}" aria-label="수동 볼륨 소스" ${type === 'emptyDir' ? 'disabled' : ''}>
     <input type="text" class="form-input" placeholder="마운트 경로 (예: /data)"
-           id="manual-vol-path-${id}" aria-label="수동 볼륨 마운트 경로">
+           id="manual-vol-path-${id}" value="${escapeHtml(mountPath)}" aria-label="수동 볼륨 마운트 경로">
     <button class="btn-remove" onclick="removeManualMount(${id})" aria-label="수동 볼륨 삭제">✕</button>
   `;
 
   document.getElementById('manual-mounts-container').appendChild(row);
   document.getElementById('manual-mounts-empty').style.display = 'none';
-  document.getElementById(`manual-vol-name-${id}`).focus();
+  if (!name) {
+    document.getElementById(`manual-vol-name-${id}`).focus();
+  }
+  toggleManualVolSource(id);
 }
 
 function removeManualMount(id) {
@@ -1023,4 +1036,260 @@ function collectManualMounts() {
     const mountPath = (document.getElementById(`manual-vol-path-${id}`) || {}).value?.trim() || '';
     return { name, type, source, mountPath };
   }).filter(m => m.name !== '' && m.mountPath !== '');
+}
+
+/* =====================================================
+   Preset Export & Import
+   ===================================================== */
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function dataURLtoFile(dataurl, filename) {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+}
+
+async function exportPreset() {
+  showLoading();
+  try {
+    // Read secret files as base64 URLs
+    const secretFilesData = await Promise.all(state.secretFiles.map(async f => {
+      try {
+        const dataUrl = await readFileAsDataURL(f);
+        return { name: f.name, size: f.size, dataUrl };
+      } catch (err) {
+        console.error('Secret 파일 읽기 실패:', f.name, err);
+        return { name: f.name, size: f.size, dataUrl: null };
+      }
+    }));
+
+    // Read configmap files as base64 URLs
+    const configMapFilesData = await Promise.all(state.uploadedFiles.map(async f => {
+      try {
+        const dataUrl = await readFileAsDataURL(f);
+        return { name: f.name, size: f.size, dataUrl };
+      } catch (err) {
+        console.error('ConfigMap 파일 읽기 실패:', f.name, err);
+        return { name: f.name, size: f.size, dataUrl: null };
+      }
+    }));
+
+    const preset = {
+      appName:          document.getElementById('app-name').value.trim(),
+      appNamespace:     document.getElementById('app-namespace').value.trim(),
+      
+      // Secret
+      secretVars:       collectSecretVars(),
+      secretFiles:      secretFilesData,
+      
+      // ConfigMap
+      configMapVars:    collectEnvVars(),
+      configMapFiles:   configMapFilesData,
+      
+      // Service
+      serviceType:      state.serviceType,
+      svcPortName:      document.getElementById('svc-port-name').value.trim(),
+      svcServicePort:   document.getElementById('svc-service-port').value,
+      svcTargetPort:    document.getElementById('svc-target-port').value,
+      svcNodePort:      document.getElementById('svc-node-port').value,
+      
+      // Deployment
+      depImage:         document.getElementById('dep-image').value.trim(),
+      depReplicas:      document.getElementById('dep-replicas').value,
+      depPort:          document.getElementById('dep-port').value,
+      depCustomEnvVars: collectDepCustomEnvVars(),
+      depManualMounts:  collectManualMounts(),
+      
+      // Deployment Checkbox States & Bindings
+      checkedSecretEnvKeys:    getSelectedSecretEnvKeys(),
+      checkedConfigMapEnvKeys: getSelectedEnvKeys(),
+      secretMountPaths:        Array.from(document.querySelectorAll('#secret-mount-items-container .mount-item-row[data-key]')).map(row => ({
+        key:       row.dataset.key,
+        checked:   row.querySelector('.mount-checkbox')?.checked ?? true,
+        mountPath: row.querySelector('.mount-path-input')?.value ?? '',
+      })),
+      configMapMountPaths:     Array.from(document.querySelectorAll('#mount-items-container .mount-item-row[data-key]')).map(row => ({
+        key:       row.dataset.key,
+        checked:   row.querySelector('.mount-checkbox')?.checked ?? true,
+        mountPath: row.querySelector('.mount-path-input')?.value ?? '',
+      })),
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(preset, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href",     dataStr);
+    downloadAnchor.setAttribute("download", `${preset.appName || 'k8s'}-generator-preset.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast('설정 프리셋 내보내기 완료!', 'success');
+  } catch (err) {
+    showToast('프리셋 내보내기 실패: ' + err.message, 'error');
+  } finally {
+    hideLoading();
+  }
+}
+
+function importPreset(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      
+      // 1. App Name & Namespace
+      document.getElementById('app-name').value = data.appName || '';
+      document.getElementById('app-namespace').value = data.appNamespace || '';
+
+      // 2. Secret Data (Vars)
+      const secretVarsContainer = document.getElementById('secret-vars-container');
+      secretVarsContainer.innerHTML = '';
+      document.getElementById('secret-vars-empty').style.display = '';
+      if (Array.isArray(data.secretVars)) {
+        data.secretVars.forEach(ev => addSecretVar(ev.key, ev.value));
+      }
+
+      // 3. Secret Files (Restore content if dataUrl exists)
+      state.secretFiles = [];
+      if (Array.isArray(data.secretFiles)) {
+        data.secretFiles.forEach(f => {
+          if (f.dataUrl) {
+            try {
+              state.secretFiles.push(dataURLtoFile(f.dataUrl, f.name));
+            } catch (err) {
+              console.error('Secret 파일 복원 실패:', f.name, err);
+              state.secretFiles.push(new File([], f.name));
+            }
+          } else {
+            state.secretFiles.push(new File([], f.name));
+          }
+        });
+      }
+      renderSecretFileList();
+
+      // 4. ConfigMap Data (Vars)
+      const envVarsContainer = document.getElementById('env-vars-container');
+      envVarsContainer.innerHTML = '';
+      document.getElementById('env-vars-empty').style.display = '';
+      if (Array.isArray(data.configMapVars)) {
+        data.configMapVars.forEach(ev => addEnvVar(ev.key, ev.value));
+      }
+
+      // 5. ConfigMap Files (Restore content if dataUrl exists)
+      state.uploadedFiles = [];
+      if (Array.isArray(data.configMapFiles)) {
+        data.configMapFiles.forEach(f => {
+          if (f.dataUrl) {
+            try {
+              state.uploadedFiles.push(dataURLtoFile(f.dataUrl, f.name));
+            } catch (err) {
+              console.error('ConfigMap 파일 복원 실패:', f.name, err);
+              state.uploadedFiles.push(new File([], f.name));
+            }
+          } else {
+            state.uploadedFiles.push(new File([], f.name));
+          }
+        });
+      }
+      renderFileList();
+
+      // 6. Service Settings
+      selectServiceType(data.serviceType || 'clusterip');
+      document.getElementById('svc-port-name').value = data.svcPortName || '';
+      document.getElementById('svc-service-port').value = data.svcServicePort || '';
+      document.getElementById('svc-target-port').value = data.svcTargetPort || '';
+      document.getElementById('svc-node-port').value = data.svcNodePort || '';
+
+      // 7. Deployment Base
+      document.getElementById('dep-image').value = data.depImage || '';
+      document.getElementById('dep-replicas').value = data.depReplicas || '1';
+      document.getElementById('dep-port').value = data.depPort || '';
+
+      // 8. Deployment Custom Env Vars
+      const customEnvContainer = document.getElementById('dep-custom-env-container');
+      customEnvContainer.innerHTML = '';
+      document.getElementById('dep-custom-env-empty').style.display = '';
+      if (Array.isArray(data.depCustomEnvVars)) {
+        data.depCustomEnvVars.forEach(ev => addDepCustomEnvVar(ev.key, ev.value));
+      }
+
+      // 9. Deployment Manual Mounts
+      const manualMountsContainer = document.getElementById('manual-mounts-container');
+      manualMountsContainer.innerHTML = '';
+      document.getElementById('manual-mounts-empty').style.display = '';
+      if (Array.isArray(data.depManualMounts)) {
+        data.depManualMounts.forEach(mm => addManualMount(mm.name, mm.type, mm.source, mm.mountPath));
+      }
+
+      // 10. Update bindings & checkboxes inside Deployment
+      updateSecretMountItemsUI();
+      updateMountItemsUI();
+      updateSecretEnvInjectUI();
+      updateEnvInjectUI();
+
+      // 11. Restore checked states & path inputs for Secret Mounts
+      if (Array.isArray(data.secretMountPaths)) {
+        data.secretMountPaths.forEach(mp => {
+          const row = document.querySelector(`#secret-mount-items-container .mount-item-row[data-key="${mp.key}"]`);
+          if (row) {
+            const cb = row.querySelector('.mount-checkbox');
+            if (cb) cb.checked = mp.checked;
+            const pathInput = row.querySelector('.mount-path-input');
+            if (pathInput) pathInput.value = mp.mountPath;
+          }
+        });
+      }
+
+      // 12. Restore checked states & path inputs for ConfigMap Mounts
+      if (Array.isArray(data.configMapMountPaths)) {
+        data.configMapMountPaths.forEach(mp => {
+          const row = document.querySelector(`#mount-items-container .mount-item-row[data-key="${mp.key}"]`);
+          if (row) {
+            const cb = row.querySelector('.mount-checkbox');
+            if (cb) cb.checked = mp.checked;
+            const pathInput = row.querySelector('.mount-path-input');
+            if (pathInput) pathInput.value = mp.mountPath;
+          }
+        });
+      }
+
+      // 13. Restore checked states for Secret Environment Keys
+      if (Array.isArray(data.checkedSecretEnvKeys)) {
+        const checkedSet = new Set(data.checkedSecretEnvKeys);
+        document.querySelectorAll('#secret-env-inject-container .secret-env-inject-cb').forEach(cb => {
+          cb.checked = checkedSet.has(cb.dataset.key);
+        });
+      }
+
+      // 14. Restore checked states for ConfigMap Environment Keys
+      if (Array.isArray(data.checkedConfigMapEnvKeys)) {
+        const checkedSet = new Set(data.checkedConfigMapEnvKeys);
+        document.querySelectorAll('#env-inject-container .env-inject-cb').forEach(cb => {
+          cb.checked = checkedSet.has(cb.dataset.key);
+        });
+      }
+
+      showToast('설정 프리셋 불러오기 완료!', 'success');
+    } catch (err) {
+      showToast('불러오기 실패: 올바르지 않은 프리셋 형식입니다.', 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // reset file input
 }
