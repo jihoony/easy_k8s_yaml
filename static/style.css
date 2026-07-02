@@ -3,12 +3,19 @@
 /* =====================
    Design System Tokens
    ===================== */
+/* 공통 토큰 */
 :root {
+  --radius-sm:     8px;
+  --radius-md:     12px;
+  --radius-lg:     18px;
+  --radius-xl:     24px;
+  --transition:    0.2s cubic-bezier(0.4,0,0.2,1);
+
+  /* 기본 다크 테마 색상 정의 */
   --bg-base:       #060d1a;
   --bg-surface:    rgba(255,255,255,0.04);
   --bg-surface-h:  rgba(255,255,255,0.07);
   --bg-input:      rgba(255,255,255,0.06);
-
   --border:        rgba(255,255,255,0.09);
   --border-focus:  rgba(99,179,237,0.6);
 
@@ -32,15 +39,110 @@
   --badge-dep:     rgba(79,142,247,0.2);
   --badge-dep-text:#4f8ef7;
 
-  --radius-sm:     8px;
-  --radius-md:     12px;
-  --radius-lg:     18px;
-  --radius-xl:     24px;
+  --shadow-sm:     0 2px 12px rgba(0,0,0,0.3);
+  --shadow-md:     0 8px 32px rgba(0,0,0,0.4);
+}
+
+/* 다크 테마 명시적 설정 */
+html[data-theme="dark"] {
+  --bg-base:       #060d1a;
+  --bg-surface:    rgba(255,255,255,0.04);
+  --bg-surface-h:  rgba(255,255,255,0.07);
+  --bg-input:      rgba(255,255,255,0.06);
+  --border:        rgba(255,255,255,0.09);
+  --border-focus:  rgba(99,179,237,0.6);
+
+  --primary:       #4f8ef7;
+  --primary-glow:  rgba(79,142,247,0.35);
+  --secondary:     #8b6cf7;
+  --accent:        #00d4ff;
+
+  --success:       #48cfad;
+  --warning:       #ffc107;
+  --danger:        #fc5c65;
+
+  --text-primary:  #e4ecf7;
+  --text-secondary:#8892b0;
+  --text-muted:    #4a5568;
+
+  --badge-cm:      rgba(72,207,173,0.2);
+  --badge-cm-text: #48cfad;
+  --badge-svc:     rgba(255,193,7,0.2);
+  --badge-svc-text:#ffc107;
+  --badge-dep:     rgba(79,142,247,0.2);
+  --badge-dep-text:#4f8ef7;
 
   --shadow-sm:     0 2px 12px rgba(0,0,0,0.3);
   --shadow-md:     0 8px 32px rgba(0,0,0,0.4);
+}
 
-  --transition:    0.2s cubic-bezier(0.4,0,0.2,1);
+/* 화이트 테마 (라이트 모드) 명시적 설정 */
+html[data-theme="light"] {
+  --bg-base:       #f4f6fa;
+  --bg-surface:    #ffffff;
+  --bg-surface-h:  #f8fafc;
+  --bg-input:      #f1f5f9;
+  --border:        #e2e8f0;
+  --border-focus:  rgba(79,142,247,0.8);
+
+  --primary:       #3b82f6;
+  --primary-glow:  rgba(59,130,246,0.25);
+  --secondary:     #7c3aed;
+  --accent:        #06b6d4;
+
+  --success:       #10b981;
+  --warning:       #f59e0b;
+  --danger:        #ef4444;
+
+  --text-primary:  #0f172a;
+  --text-secondary:#475569;
+  --text-muted:    #94a3b8;
+
+  --badge-cm:      rgba(16,185,129,0.15);
+  --badge-cm-text: #047857;
+  --badge-svc:     rgba(245,158,11,0.15);
+  --badge-svc-text:#b45309;
+  --badge-dep:     rgba(59,130,246,0.15);
+  --badge-dep-text:#1d4ed8;
+
+  --shadow-sm:     0 2px 8px rgba(0,0,0,0.06);
+  --shadow-md:     0 8px 24px rgba(149,157,165,0.15);
+}
+
+/* 시스템 설정 우선순위 반영 */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]):not([data-theme="light"]),
+  html[data-theme="system"] {
+    --bg-base:       #f4f6fa;
+    --bg-surface:    #ffffff;
+    --bg-surface-h:  #f8fafc;
+    --bg-input:      #f1f5f9;
+    --border:        #e2e8f0;
+    --border-focus:  rgba(79,142,247,0.8);
+
+    --primary:       #3b82f6;
+    --primary-glow:  rgba(59,130,246,0.25);
+    --secondary:     #7c3aed;
+    --accent:        #06b6d4;
+
+    --success:       #10b981;
+    --warning:       #f59e0b;
+    --danger:        #ef4444;
+
+    --text-primary:  #0f172a;
+    --text-secondary:#475569;
+    --text-muted:    #94a3b8;
+
+    --badge-cm:      rgba(16,185,129,0.15);
+    --badge-cm-text: #047857;
+    --badge-svc:     rgba(245,158,11,0.15);
+    --badge-svc-text:#b45309;
+    --badge-dep:     rgba(59,130,246,0.15);
+    --badge-dep-text:#1d4ed8;
+
+    --shadow-sm:     0 2px 8px rgba(0,0,0,0.06);
+    --shadow-md:     0 8px 24px rgba(149,157,165,0.15);
+  }
 }
 
 /* =====================
@@ -83,7 +185,7 @@ body::before {
 .header {
   position: relative;
   z-index: 100;
-  background: rgba(6,13,26,0.9);
+  background: var(--bg-surface);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   padding: 0 2rem;
@@ -97,6 +199,51 @@ body::before {
   display: flex;
   align-items: center;
   gap: 1.25rem;
+}
+
+/* =====================
+   Theme Switcher
+   ===================== */
+.theme-switcher {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px;
+  margin-left: auto; /* Push to the right */
+  gap: 2px;
+}
+
+.theme-btn {
+  background: transparent;
+  border: none;
+  border-radius: 18px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all var(--transition);
+}
+
+.theme-btn:hover {
+  color: var(--text-primary);
+}
+
+.theme-btn.active {
+  background: var(--bg-surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 600px) {
+  .theme-btn-text {
+    display: none;
+  }
 }
 
 .logo {
@@ -247,7 +394,32 @@ body::before {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid var(--border);
   background: rgba(0,0,0,0.15);
-  cursor: default;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--transition);
+}
+
+.k8s-section-header:hover {
+  background: rgba(255,255,255,0.02);
+}
+
+.section-toggle-icon {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  transition: transform var(--transition);
+  margin-left: auto; /* Push the arrow to the far right */
+}
+
+.k8s-section.collapsed .section-toggle-icon {
+  transform: rotate(-90deg);
+}
+
+.k8s-section.collapsed .k8s-section-body {
+  display: none !important;
+}
+
+.k8s-section.collapsed .k8s-section-header {
+  border-bottom-color: transparent;
 }
 
 .section-num {
@@ -939,6 +1111,21 @@ body::before {
   word-break: break-all;
   animation: slideIn 0.2s ease;
   margin: 0.75rem;
+}
+
+/* =====================
+   Manual Volume Mount Row
+   ===================== */
+.manual-mount-row {
+  display: grid;
+  grid-template-columns: 1fr 110px 1.2fr 1.2fr 30px;
+  gap: 0.5rem;
+  align-items: center;
+  animation: slideIn 0.2s ease;
+}
+
+.manual-mount-row select.form-input {
+  padding-right: 1.5rem;
 }
 
 /* =====================

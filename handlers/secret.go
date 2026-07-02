@@ -32,6 +32,7 @@ func HandleSecret(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "my-secret"
 	}
+	namespace := r.FormValue("namespace")
 
 	// Create a temp directory for uploaded files.
 	// Must be world-readable (0755) so the bitnami/kubectl container can access the mounted files.
@@ -48,6 +49,9 @@ func HandleSecret(w http.ResponseWriter, r *http.Request) {
 
 	// Build kubectl args for secret generic
 	args := []string{"create", "secret", "generic", name}
+	if namespace != "" {
+		args = append(args, "--namespace="+namespace)
+	}
 
 	// Handle secret data key-value pairs (using envVars structure)
 	envVarsJSON := r.FormValue("envVars")

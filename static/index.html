@@ -19,6 +19,19 @@
       </div>
       <div class="header-divider"></div>
       <p class="header-subtitle">kubectl 컨테이너 기반 Kubernetes YAML 생성기</p>
+
+      <!-- Theme Switcher Widget -->
+      <div class="theme-switcher" role="radiogroup" aria-label="화면 테마 선택">
+        <button class="theme-btn" id="theme-btn-system" onclick="setThemeMode('system')" title="시스템 테마에 맞춤">
+          💻 <span class="theme-btn-text">시스템</span>
+        </button>
+        <button class="theme-btn" id="theme-btn-light" onclick="setThemeMode('light')" title="라이트 테마">
+          ☀️ <span class="theme-btn-text">라이트</span>
+        </button>
+        <button class="theme-btn" id="theme-btn-dark" onclick="setThemeMode('dark')" title="다크 테마">
+          🌙 <span class="theme-btn-text">다크</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -29,26 +42,41 @@
       <!-- ========== Left: Form Panel (scrollable) ========== -->
       <div class="form-panel">
 
-        <!-- Shared App Name -->
+        <!-- Shared App Name & Namespace -->
         <div class="app-name-card">
-          <label class="form-label" for="app-name">
-            <span class="app-name-icon" aria-hidden="true">🏷️</span>
-            앱 이름 <span class="required">*</span>
-            <span class="app-name-hint">Secret · ConfigMap · Service · Deployment 공통 적용</span>
-          </label>
-          <input type="text" id="app-name" class="form-input app-name-input"
-                 placeholder="my-app" autocomplete="off">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div class="form-group">
+              <label class="form-label" for="app-name">
+                <span class="app-name-icon" aria-hidden="true">🏷️</span>
+                앱 이름 <span class="required">*</span>
+              </label>
+              <input type="text" id="app-name" class="form-input app-name-input"
+                     placeholder="my-app" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="app-namespace">
+                <span class="app-name-icon" aria-hidden="true">🌐</span>
+                네임스페이스
+              </label>
+              <input type="text" id="app-namespace" class="form-input app-name-input"
+                     placeholder="default" autocomplete="off">
+            </div>
+          </div>
+          <span class="app-name-hint" style="margin-top: 0.4rem; font-size: 0.68rem; color: var(--text-muted); display: block; text-align: right;">
+            Secret · ConfigMap · Service · Deployment 공통 적용
+          </span>
         </div>
 
         <!-- ===== Section 1: Secret ===== -->
         <section class="k8s-section" id="section-secret">
-          <div class="k8s-section-header">
+          <div class="k8s-section-header" onclick="toggleSection('secret')">
             <div class="section-num" style="background: linear-gradient(135deg, var(--danger), var(--secondary));">1</div>
             <div class="section-title-group">
               <h2>Secret</h2>
               <p>비밀번호, 토큰 등 민감 정보를 포함한 Secret을 생성합니다</p>
             </div>
             <span class="section-done" id="done-secret">✓ 생성됨</span>
+            <span class="section-toggle-icon" id="toggle-icon-secret">▼</span>
           </div>
 
           <div class="k8s-section-body">
@@ -93,13 +121,14 @@
 
         <!-- ===== Section 2: ConfigMap ===== -->
         <section class="k8s-section" id="section-configmap">
-          <div class="k8s-section-header">
+          <div class="k8s-section-header" onclick="toggleSection('configmap')">
             <div class="section-num">2</div>
             <div class="section-title-group">
               <h2>ConfigMap</h2>
               <p>환경 변수와 일반 파일을 포함한 ConfigMap을 생성합니다</p>
             </div>
             <span class="section-done" id="done-configmap">✓ 생성됨</span>
+            <span class="section-toggle-icon" id="toggle-icon-configmap">▼</span>
           </div>
 
           <div class="k8s-section-body">
@@ -145,13 +174,14 @@
 
         <!-- ===== Section 3: Service ===== -->
         <section class="k8s-section" id="section-service">
-          <div class="k8s-section-header">
+          <div class="k8s-section-header" onclick="toggleSection('service')">
             <div class="section-num">3</div>
             <div class="section-title-group">
               <h2>Service</h2>
               <p>Kubernetes Service 리소스를 구성합니다</p>
             </div>
             <span class="section-done" id="done-service">✓ 생성됨</span>
+            <span class="section-toggle-icon" id="toggle-icon-service">▼</span>
           </div>
 
           <div class="k8s-section-body">
@@ -205,13 +235,14 @@
 
         <!-- ===== Section 4: Deployment ===== -->
         <section class="k8s-section" id="section-deployment">
-          <div class="k8s-section-header">
+          <div class="k8s-section-header" onclick="toggleSection('deployment')">
             <div class="section-num">4</div>
             <div class="section-title-group">
               <h2>Deployment</h2>
               <p>Secret 및 ConfigMap이 연동된 Deployment를 생성합니다</p>
             </div>
             <span class="section-done" id="done-deployment">✓ 생성됨</span>
+            <span class="section-toggle-icon" id="toggle-icon-deployment">▼</span>
           </div>
 
           <div class="k8s-section-body">
@@ -322,6 +353,18 @@
                   <p class="empty-hint" style="padding:0.75rem">ConfigMap 파일을 업로드하면 여기에 표시됩니다</p>
                 </div>
               </div>
+            </div>
+
+            <!-- Manual Volume Mount -->
+            <div class="form-section mount-section" style="border-color: rgba(139,108,247,0.2); background: rgba(139,108,247,0.02); margin-top: 0.75rem;">
+              <div class="form-section-header">
+                <h3>수동 볼륨 마운트</h3>
+                <button class="btn-add" onclick="addManualMount()" aria-label="수동 볼륨 추가">
+                  <span aria-hidden="true">+</span> 볼륨 추가
+                </button>
+              </div>
+              <div id="manual-mounts-container" class="env-vars-container" style="display: flex; flex-direction: column; gap: 0.5rem;" aria-live="polite"></div>
+              <p id="manual-mounts-empty" class="empty-hint" style="padding: 0.25rem;">직접 정의할 볼륨 마운트 정보가 있다면 추가하세요</p>
             </div>
 
             <button class="btn-generate" onclick="generateDeployment()">

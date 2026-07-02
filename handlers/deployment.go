@@ -21,8 +21,16 @@ type CustomEnvVar struct {
 	Value string `json:"value"`
 }
 
+type ManualMount struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`      // "hostPath", "emptyDir", "pvc"
+	Source    string `json:"source"`    // Host path or PVC claimName
+	MountPath string `json:"mountPath"` // container mount path
+}
+
 type DeploymentRequest struct {
 	Name             string         `json:"name"`
+	Namespace        string         `json:"namespace"`
 	Image            string         `json:"image"`
 	Replicas         string         `json:"replicas"`
 	Port             string         `json:"port"`
@@ -33,6 +41,7 @@ type DeploymentRequest struct {
 	EnvKeys          []string       `json:"envKeys"`          // ConfigMap keys to inject as env vars
 	SecretEnvKeys    []string       `json:"secretEnvKeys"`    // Secret keys to inject as env vars
 	CustomEnvVars    []CustomEnvVar `json:"customEnvVars"`    // arbitrary manual env vars
+	ManualMounts     []ManualMount  `json:"manualMounts"`     // manually configured volume mounts
 }
 
 // HandleDeployment handles POST /api/deployment
@@ -68,8 +77,11 @@ func HandleDeployment(w http.ResponseWriter, r *http.Request) {
 		"--image=" + req.Image,
 		"--replicas=" + req.Replicas,
 		"--port=" + req.Port,
-		"--dry-run=client", "-o", "yaml",
 	}
+	if req.Namespace != "" {
+		args = append(args, "--namespace="+req.Namespace)
+	}
+	args = append(args, "--dry-run=client", "-o", "yaml")
 
 	yamlOutput, err := kubectl.Run(args, "")
 	if err != nil {
@@ -112,6 +124,14 @@ func HandleDeployment(w http.ResponseWriter, r *http.Request) {
 	// Post-process 2.2: add per-file Secret volume mounts (subPath)
 	if req.SecretName != "" && len(req.SecretMountItems) > 0 {
 		processed, err := addSecretMount(yamlOutput, req.SecretName, req.SecretMountItems)
+		if err == nil {
+			yamlOutput = processed
+		}
+	}
+
+	// Post-process 3: inject manual volume mounts (hostPath, emptyDir, PVC)
+	if len(req.ManualMounts) > 0 {
+		processed, err := addManualVolumeMounts(yamlOutput, req.ManualMounts)
 		if err == nil {
 			yamlOutput = processed
 		}
@@ -418,6 +438,82 @@ func addCustomEnvVars(yamlStr string, customEnvVars []CustomEnvVar) (string, err
 		})
 	}
 	container["env"] = envList
+
+	out, err := yaml.Marshal(obj)
+	if err != nil {
+		return yamlStr, err
+	}
+	return string(out), nil
+}
+
+// addManualVolumeMounts injects user-defined volumes and volumeMounts into the first container.
+func addManualVolumeMounts(yamlStr string, manualMounts []ManualMount) (string, error) {
+	if len(manualMounts) == 0 {
+		return yamlStr, nil
+	}
+
+	var obj map[string]interface{}
+	if err := yaml.Unmarshal([]byte(yamlStr), &obj); err != nil {
+		return yamlStr, err
+	}
+
+	spec, ok := obj["spec"].(map[string]interface{})
+	if !ok {
+		return yamlStr, fmt.Errorf("spec not found")
+	}
+	template, ok := spec["template"].(map[string]interface{})
+	if !ok {
+		return yamlStr, fmt.Errorf("template not found")
+	}
+	podSpec, ok := template["spec"].(map[string]interface{})
+	if !ok {
+		return yamlStr, fmt.Errorf("pod spec not found")
+	}
+
+	// --- Add manual volumes ---
+	var volumesList []interface{}
+	if vols, ok := podSpec["volumes"].([]interface{}); ok {
+		volumesList = vols
+	}
+
+	for _, mm := range manualMounts {
+		vol := map[string]interface{}{
+			"name": mm.Name,
+		}
+		switch mm.Type {
+		case "hostPath":
+			vol["hostPath"] = map[string]interface{}{
+				"path": mm.Source,
+			}
+		case "emptyDir":
+			vol["emptyDir"] = map[string]interface{}{}
+		case "pvc":
+			vol["persistentVolumeClaim"] = map[string]interface{}{
+				"claimName": mm.Source,
+			}
+		}
+		volumesList = append(volumesList, vol)
+	}
+	podSpec["volumes"] = volumesList
+
+	// --- Add manual volumeMounts ---
+	containers, ok := podSpec["containers"].([]interface{})
+	if ok && len(containers) > 0 {
+		container, ok := containers[0].(map[string]interface{})
+		if ok {
+			var mountsList []interface{}
+			if mounts, ok := container["volumeMounts"].([]interface{}); ok {
+				mountsList = mounts
+			}
+			for _, mm := range manualMounts {
+				mountsList = append(mountsList, map[string]interface{}{
+					"name":      mm.Name,
+					"mountPath": mm.MountPath,
+				})
+			}
+			container["volumeMounts"] = mountsList
+		}
+	}
 
 	out, err := yaml.Marshal(obj)
 	if err != nil {

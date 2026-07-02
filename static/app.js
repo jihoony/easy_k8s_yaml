@@ -11,6 +11,7 @@ const state = {
   envVarCount: 0,
   secretVarCount: 0,
   depCustomEnvCount: 0,
+  manualMountCount: 0,
 };
 
 // ----- Init -----
@@ -19,7 +20,18 @@ document.addEventListener('DOMContentLoaded', () => {
   updateSecretMountItemsUI();
   updateEnvInjectUI();
   updateSecretEnvInjectUI();
+  restoreTheme(); // Sync UI buttons with current theme state
 });
+
+/* =====================================================
+   Section Folding (Toggle)
+   ===================================================== */
+function toggleSection(type) {
+  const section = document.getElementById(`section-${type}`);
+  if (section) {
+    section.classList.toggle('collapsed');
+  }
+}
 
 /* =====================================================
    Section Done Badges
@@ -349,6 +361,7 @@ function selectAllMountItems(select) {
   }
 }
 
+// Returns [{key, mountPath}] for checked files only
 function getSelectedMountItems() {
   const container = document.getElementById('mount-items-container');
   if (!container) return [];
@@ -518,6 +531,7 @@ async function generateSecret() {
     document.getElementById('app-name').focus();
     return;
   }
+  const namespace = document.getElementById('app-namespace').value.trim();
 
   const secretVars = collectSecretVars();
   if (secretVars.length === 0 && state.secretFiles.length === 0) {
@@ -527,6 +541,7 @@ async function generateSecret() {
 
   const formData = new FormData();
   formData.append('name', name);
+  formData.append('namespace', namespace);
   formData.append('envVars', JSON.stringify(secretVars));
   state.secretFiles.forEach(f => formData.append('files', f, f.name));
 
@@ -557,6 +572,7 @@ async function generateConfigMap() {
     document.getElementById('app-name').focus();
     return;
   }
+  const namespace = document.getElementById('app-namespace').value.trim();
 
   const envVars = collectEnvVars();
   if (envVars.length === 0 && state.uploadedFiles.length === 0) {
@@ -566,6 +582,7 @@ async function generateConfigMap() {
 
   const formData = new FormData();
   formData.append('name', name);
+  formData.append('namespace', namespace);
   formData.append('envVars', JSON.stringify(envVars));
   state.uploadedFiles.forEach(f => formData.append('files', f, f.name));
 
@@ -596,9 +613,11 @@ async function generateService() {
     document.getElementById('app-name').focus();
     return;
   }
+  const namespace = document.getElementById('app-namespace').value.trim();
 
   const payload = {
     name,
+    namespace,
     serviceType: state.serviceType,
     portName:    document.getElementById('svc-port-name').value.trim(),
     servicePort: document.getElementById('svc-service-port').value,
@@ -642,15 +661,18 @@ async function generateDeployment() {
     document.getElementById('dep-image').focus();
     return;
   }
+  const namespace = document.getElementById('app-namespace').value.trim();
 
   const mountItems       = getSelectedMountItems();       // [{key, mountPath}] ConfigMap
   const secretMountItems = getSelectedSecretMountItems(); // [{key, mountPath}] Secret
   const envKeys          = getSelectedEnvKeys();          // [key, ...] ConfigMap
   const secretEnvKeys    = getSelectedSecretEnvKeys();    // [key, ...] Secret
   const customEnvVars    = collectDepCustomEnvVars();     // [{key, value}, ...] Custom
+  const manualMounts     = collectManualMounts();         // [{name, type, source, mountPath}, ...]
 
   const payload = {
     name,
+    namespace,
     image,
     replicas:         document.getElementById('dep-replicas').value,
     port:             document.getElementById('dep-port').value,
@@ -661,6 +683,7 @@ async function generateDeployment() {
     envKeys,
     secretEnvKeys,
     customEnvVars,
+    manualMounts,
   };
 
   showLoading();
@@ -773,7 +796,7 @@ function typeLabel(type) {
 
 /* =====================================================
    Loading & Toast
-   ===================================================== */
+   ==================================================== */
 function showLoading() { document.getElementById('loading-overlay').classList.add('show'); }
 function hideLoading()  { document.getElementById('loading-overlay').classList.remove('show'); }
 
@@ -800,4 +823,102 @@ function formatBytes(b) {
   if (b < 1024)    return b + ' B';
   if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
   return (b / 1048576).toFixed(1) + ' MB';
+}
+
+/* =====================================================
+   Theme Mode Manager
+   ===================================================== */
+function setThemeMode(mode) {
+  // Set data-theme attribute on <html> element
+  document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('theme', mode);
+
+  // Sync active switcher button state
+  ['system', 'light', 'dark'].forEach(m => {
+    const btn = document.getElementById(`theme-btn-${m}`);
+    if (btn) {
+      btn.classList.toggle('active', m === mode);
+    }
+  });
+}
+
+function restoreTheme() {
+  const saved = localStorage.getItem('theme') || 'system';
+  setThemeMode(saved);
+}
+
+// Immediate execution to prevent flash of unstyled theme
+(function() {
+  const saved = localStorage.getItem('theme') || 'system';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+
+/* =====================================================
+   Deployment — Manual Volume Mounts
+   ===================================================== */
+function addManualMount() {
+  state.manualMountCount++;
+  const id = state.manualMountCount;
+
+  const row = document.createElement('div');
+  row.className = 'manual-mount-row';
+  row.id = `manual-mount-row-${id}`;
+  row.style.marginTop = '0.5rem';
+  row.innerHTML = `
+    <input type="text" class="form-input" placeholder="볼륨명 (예: data-vol)"
+           id="manual-vol-name-${id}" aria-label="수동 볼륨 이름">
+    <select class="form-input" id="manual-vol-type-${id}"
+            onchange="toggleManualVolSource(${id})" aria-label="수동 볼륨 타입">
+      <option value="hostPath">hostPath</option>
+      <option value="emptyDir">emptyDir</option>
+      <option value="pvc">PVC</option>
+    </select>
+    <input type="text" class="form-input" placeholder="호스트 경로 (예: /var/data)"
+           id="manual-vol-source-${id}" aria-label="수동 볼륨 소스">
+    <input type="text" class="form-input" placeholder="마운트 경로 (예: /data)"
+           id="manual-vol-path-${id}" aria-label="수동 볼륨 마운트 경로">
+    <button class="btn-remove" onclick="removeManualMount(${id})" aria-label="수동 볼륨 삭제">✕</button>
+  `;
+
+  document.getElementById('manual-mounts-container').appendChild(row);
+  document.getElementById('manual-mounts-empty').style.display = 'none';
+  document.getElementById(`manual-vol-name-${id}`).focus();
+}
+
+function removeManualMount(id) {
+  const row = document.getElementById(`manual-mount-row-${id}`);
+  if (row) row.remove();
+  if (document.querySelectorAll('#manual-mounts-container .manual-mount-row').length === 0) {
+    document.getElementById('manual-mounts-empty').style.display = '';
+  }
+}
+
+function toggleManualVolSource(id) {
+  const typeEl = document.getElementById(`manual-vol-type-${id}`);
+  const srcEl = document.getElementById(`manual-vol-source-${id}`);
+  if (!typeEl || !srcEl) return;
+
+  const type = typeEl.value;
+  if (type === 'emptyDir') {
+    srcEl.value = '';
+    srcEl.placeholder = '(emptyDir은 소스 생략)';
+    srcEl.disabled = true;
+  } else if (type === 'pvc') {
+    srcEl.placeholder = 'PVC 이름 (예: my-pvc)';
+    srcEl.disabled = false;
+  } else {
+    srcEl.placeholder = '호스트 경로 (예: /var/data)';
+    srcEl.disabled = false;
+  }
+}
+
+function collectManualMounts() {
+  return Array.from(document.querySelectorAll('#manual-mounts-container .manual-mount-row')).map(row => {
+    const id = row.id.replace('manual-mount-row-', '');
+    const name = (document.getElementById(`manual-vol-name-${id}`) || {}).value?.trim() || '';
+    const type = (document.getElementById(`manual-vol-type-${id}`) || {}).value || 'hostPath';
+    const source = (document.getElementById(`manual-vol-source-${id}`) || {}).value?.trim() || '';
+    const mountPath = (document.getElementById(`manual-vol-path-${id}`) || {}).value?.trim() || '';
+    return { name, type, source, mountPath };
+  }).filter(m => m.name !== '' && m.mountPath !== '');
 }

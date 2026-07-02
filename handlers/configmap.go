@@ -32,6 +32,7 @@ func HandleConfigMap(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "my-configmap"
 	}
+	namespace := r.FormValue("namespace")
 
 	// Create a temp directory for uploaded files.
 	// Must be world-readable (0755) so the bitnami/kubectl container
@@ -49,6 +50,9 @@ func HandleConfigMap(w http.ResponseWriter, r *http.Request) {
 
 	// Build kubectl args
 	args := []string{"create", "configmap", name}
+	if namespace != "" {
+		args = append(args, "--namespace="+namespace)
+	}
 
 	// Handle environment variables
 	envVarsJSON := r.FormValue("envVars")

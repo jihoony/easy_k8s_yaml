@@ -12,6 +12,7 @@ import (
 
 type ServiceRequest struct {
 	Name        string `json:"name"`
+	Namespace   string `json:"namespace"`
 	ServiceType string `json:"serviceType"` // "clusterip" or "nodeport"
 	PortName    string `json:"portName"`
 	ServicePort string `json:"servicePort"`
@@ -53,8 +54,11 @@ func HandleService(w http.ResponseWriter, r *http.Request) {
 	args := []string{
 		"create", "service", serviceType, req.Name,
 		fmt.Sprintf("--tcp=%s:%s", req.ServicePort, req.TargetPort),
-		"--dry-run=client", "-o", "yaml",
 	}
+	if req.Namespace != "" {
+		args = append(args, "--namespace="+req.Namespace)
+	}
+	args = append(args, "--dry-run=client", "-o", "yaml")
 
 	yamlOutput, err := kubectl.Run(args, "")
 	if err != nil {
