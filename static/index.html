@@ -65,10 +65,13 @@
           <span class="app-name-hint" style="margin-top: 0.4rem; font-size: 0.68rem; color: var(--text-muted); display: block; text-align: right;">
             Secret · ConfigMap · Service · Deployment 공통 적용
           </span>
+          <button class="btn-generate" onclick="generateAll()" style="margin-top: 0.75rem; background: linear-gradient(135deg, var(--primary), var(--secondary)); box-shadow: 0 4px 16px rgba(79,142,247,0.25);">
+            ⚡ 일괄 YAML 생성
+          </button>
         </div>
 
         <!-- ===== Section 1: Secret ===== -->
-        <section class="k8s-section" id="section-secret">
+        <section class="k8s-section collapsed" id="section-secret">
           <div class="k8s-section-header" onclick="toggleSection('secret')">
             <div class="section-num" style="background: linear-gradient(135deg, var(--danger), var(--secondary));">1</div>
             <div class="section-title-group">
@@ -120,7 +123,7 @@
         </section>
 
         <!-- ===== Section 2: ConfigMap ===== -->
-        <section class="k8s-section" id="section-configmap">
+        <section class="k8s-section collapsed" id="section-configmap">
           <div class="k8s-section-header" onclick="toggleSection('configmap')">
             <div class="section-num">2</div>
             <div class="section-title-group">
@@ -173,7 +176,7 @@
         </section>
 
         <!-- ===== Section 3: Service ===== -->
-        <section class="k8s-section" id="section-service">
+        <section class="k8s-section collapsed" id="section-service">
           <div class="k8s-section-header" onclick="toggleSection('service')">
             <div class="section-num">3</div>
             <div class="section-title-group">
@@ -234,7 +237,7 @@
         </section>
 
         <!-- ===== Section 4: Deployment ===== -->
-        <section class="k8s-section" id="section-deployment">
+        <section class="k8s-section collapsed" id="section-deployment">
           <div class="k8s-section-header" onclick="toggleSection('deployment')">
             <div class="section-num">4</div>
             <div class="section-title-group">
@@ -451,6 +454,6 @@
   <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <script src="app.js"></script>
+  <script src="app.js?v=2.0"></script>
 </body>
 </html>

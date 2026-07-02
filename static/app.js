@@ -524,18 +524,22 @@ function selectServiceType(type) {
 /* =====================================================
    API: Generate Secret
    ===================================================== */
-async function generateSecret() {
+async function generateSecret(isSilent = false) {
   const name = document.getElementById('app-name').value.trim();
   if (!name) {
-    showToast('앱 이름을 입력하세요', 'error');
-    document.getElementById('app-name').focus();
+    if (!isSilent) {
+      showToast('앱 이름을 입력하세요', 'error');
+      document.getElementById('app-name').focus();
+    }
     return;
   }
   const namespace = document.getElementById('app-namespace').value.trim();
 
   const secretVars = collectSecretVars();
   if (secretVars.length === 0 && state.secretFiles.length === 0) {
-    showToast('Secret 데이터 또는 파일을 하나 이상 추가하세요', 'error');
+    if (!isSilent) {
+      showToast('Secret 데이터 또는 파일을 하나 이상 추가하세요', 'error');
+    }
     return;
   }
 
@@ -545,7 +549,7 @@ async function generateSecret() {
   formData.append('envVars', JSON.stringify(secretVars));
   state.secretFiles.forEach(f => formData.append('files', f, f.name));
 
-  showLoading();
+  if (!isSilent) showLoading();
   try {
     const res  = await fetch('/api/secret', { method: 'POST', body: formData });
     const data = await res.json();
@@ -553,30 +557,35 @@ async function generateSecret() {
 
     displayYaml('secret', data.yaml);
     markSectionDone('secret');
-    showToast('Secret YAML 생성 완료!', 'success');
+    if (!isSilent) showToast('Secret YAML 생성 완료!', 'success');
   } catch (err) {
     showYamlError('secret', err.message);
-    showToast('오류: ' + err.message, 'error');
+    if (!isSilent) showToast('오류: ' + err.message, 'error');
+    if (isSilent) throw err;
   } finally {
-    hideLoading();
+    if (!isSilent) hideLoading();
   }
 }
 
 /* =====================================================
    API: Generate ConfigMap
    ===================================================== */
-async function generateConfigMap() {
+async function generateConfigMap(isSilent = false) {
   const name = document.getElementById('app-name').value.trim();
   if (!name) {
-    showToast('앱 이름을 입력하세요', 'error');
-    document.getElementById('app-name').focus();
+    if (!isSilent) {
+      showToast('앱 이름을 입력하세요', 'error');
+      document.getElementById('app-name').focus();
+    }
     return;
   }
   const namespace = document.getElementById('app-namespace').value.trim();
 
   const envVars = collectEnvVars();
   if (envVars.length === 0 && state.uploadedFiles.length === 0) {
-    showToast('환경 변수 또는 파일을 하나 이상 추가하세요', 'error');
+    if (!isSilent) {
+      showToast('환경 변수 또는 파일을 하나 이상 추가하세요', 'error');
+    }
     return;
   }
 
@@ -586,7 +595,7 @@ async function generateConfigMap() {
   formData.append('envVars', JSON.stringify(envVars));
   state.uploadedFiles.forEach(f => formData.append('files', f, f.name));
 
-  showLoading();
+  if (!isSilent) showLoading();
   try {
     const res  = await fetch('/api/configmap', { method: 'POST', body: formData });
     const data = await res.json();
@@ -594,38 +603,49 @@ async function generateConfigMap() {
 
     displayYaml('configmap', data.yaml);
     markSectionDone('configmap');
-    showToast('ConfigMap YAML 생성 완료!', 'success');
+    if (!isSilent) showToast('ConfigMap YAML 생성 완료!', 'success');
   } catch (err) {
     showYamlError('configmap', err.message);
-    showToast('오류: ' + err.message, 'error');
+    if (!isSilent) showToast('오류: ' + err.message, 'error');
+    if (isSilent) throw err;
   } finally {
-    hideLoading();
+    if (!isSilent) hideLoading();
   }
 }
 
 /* =====================================================
    API: Generate Service
    ===================================================== */
-async function generateService() {
+async function generateService(isSilent = false) {
   const name = document.getElementById('app-name').value.trim();
   if (!name) {
-    showToast('앱 이름을 입력하세요', 'error');
-    document.getElementById('app-name').focus();
+    if (!isSilent) {
+      showToast('앱 이름을 입력하세요', 'error');
+      document.getElementById('app-name').focus();
+    }
     return;
   }
   const namespace = document.getElementById('app-namespace').value.trim();
+
+  const servicePort = document.getElementById('svc-service-port').value;
+  const targetPort  = document.getElementById('svc-target-port').value;
+
+  if (isSilent && (!servicePort || !targetPort)) {
+    // Skip silently in batch mode if ports are not filled
+    return;
+  }
 
   const payload = {
     name,
     namespace,
     serviceType: state.serviceType,
     portName:    document.getElementById('svc-port-name').value.trim(),
-    servicePort: document.getElementById('svc-service-port').value,
-    targetPort:  document.getElementById('svc-target-port').value,
+    servicePort,
+    targetPort,
     nodePort:    state.serviceType === 'nodeport' ? document.getElementById('svc-node-port').value : '',
   };
 
-  showLoading();
+  if (!isSilent) showLoading();
   try {
     const res  = await fetch('/api/service', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -636,29 +656,34 @@ async function generateService() {
 
     displayYaml('service', data.yaml);
     markSectionDone('service');
-    showToast('Service YAML 생성 완료!', 'success');
+    if (!isSilent) showToast('Service YAML 생성 완료!', 'success');
   } catch (err) {
     showYamlError('service', err.message);
-    showToast('오류: ' + err.message, 'error');
+    if (!isSilent) showToast('오류: ' + err.message, 'error');
+    if (isSilent) throw err;
   } finally {
-    hideLoading();
+    if (!isSilent) hideLoading();
   }
 }
 
 /* =====================================================
    API: Generate Deployment
    ===================================================== */
-async function generateDeployment() {
+async function generateDeployment(isSilent = false) {
   const name = document.getElementById('app-name').value.trim();
   if (!name) {
-    showToast('앱 이름을 입력하세요', 'error');
-    document.getElementById('app-name').focus();
+    if (!isSilent) {
+      showToast('앱 이름을 입력하세요', 'error');
+      document.getElementById('app-name').focus();
+    }
     return;
   }
   const image = document.getElementById('dep-image').value.trim();
   if (!image) {
-    showToast('컨테이너 이미지를 입력하세요', 'error');
-    document.getElementById('dep-image').focus();
+    if (!isSilent) {
+      showToast('컨테이너 이미지를 입력하세요', 'error');
+      document.getElementById('dep-image').focus();
+    }
     return;
   }
   const namespace = document.getElementById('app-namespace').value.trim();
@@ -686,7 +711,7 @@ async function generateDeployment() {
     manualMounts,
   };
 
-  showLoading();
+  if (!isSilent) showLoading();
   try {
     const res  = await fetch('/api/deployment', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -697,10 +722,87 @@ async function generateDeployment() {
 
     displayYaml('deployment', data.yaml);
     markSectionDone('deployment');
-    showToast('Deployment YAML 생성 완료!', 'success');
+    if (!isSilent) showToast('Deployment YAML 생성 완료!', 'success');
   } catch (err) {
     showYamlError('deployment', err.message);
-    showToast('오류: ' + err.message, 'error');
+    if (!isSilent) showToast('오류: ' + err.message, 'error');
+    if (isSilent) throw err;
+  } finally {
+    if (!isSilent) hideLoading();
+  }
+}
+
+/* =====================================================
+   API: Batch Generate All (Generate All Selected)
+   ===================================================== */
+async function generateAll() {
+  const name = document.getElementById('app-name').value.trim();
+  if (!name) {
+    showToast('앱 이름을 입력하세요', 'error');
+    document.getElementById('app-name').focus();
+    return;
+  }
+
+  showLoading();
+  let generatedCount = 0;
+  let skippedCount = 0;
+
+  try {
+    // 1. Secret
+    const secretVars = collectSecretVars();
+    if (secretVars.length > 0 || state.secretFiles.length > 0) {
+      await generateSecret(true);
+      generatedCount++;
+    } else {
+      skippedCount++;
+      state.yamls.secret = null;
+      document.getElementById('yaml-card-secret').style.display = 'none';
+    }
+
+    // 2. ConfigMap
+    const envVars = collectEnvVars();
+    if (envVars.length > 0 || state.uploadedFiles.length > 0) {
+      await generateConfigMap(true);
+      generatedCount++;
+    } else {
+      skippedCount++;
+      state.yamls.configmap = null;
+      document.getElementById('yaml-card-configmap').style.display = 'none';
+    }
+
+    // 3. Service
+    const servicePort = document.getElementById('svc-service-port').value;
+    const targetPort  = document.getElementById('svc-target-port').value;
+    if (servicePort && targetPort) {
+      await generateService(true);
+      generatedCount++;
+    } else {
+      skippedCount++;
+      state.yamls.service = null;
+      document.getElementById('yaml-card-service').style.display = 'none';
+    }
+
+    // 4. Deployment
+    const image = document.getElementById('dep-image').value.trim();
+    if (image) {
+      await generateDeployment(true);
+      generatedCount++;
+    } else {
+      skippedCount++;
+      state.yamls.deployment = null;
+      document.getElementById('yaml-card-deployment').style.display = 'none';
+    }
+
+    updateActionButtons();
+
+    if (generatedCount > 0) {
+      showToast(`일괄 생성 완료! (${generatedCount}개 생성, ${skippedCount}개 생략)`, 'success');
+    } else {
+      showToast('생성할 설정이 없습니다. 각 섹션에 값을 입력해 주세요.', 'warning');
+      document.getElementById('output-empty').style.display = '';
+    }
+  } catch (err) {
+    showToast('일괄 생성 중 오류가 발생했습니다: ' + err.message, 'error');
   } finally {
     hideLoading();
   }
